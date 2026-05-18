@@ -2,7 +2,7 @@
   <div class="practice-page" v-if="paper">
     <div class="practice-header">
       <n-text strong>{{ store.currentUnit?.name }} - {{ paper.name }}</n-text>
-      <n-text type="info" style="font-size: 20px; margin-left: 16px;">
+      <n-text v-if="!finished" type="info" style="font-size: 20px; margin-left: 16px;">
         {{ userAnswers.length + 1 }} / {{ paper.words.length }}
       </n-text>
     </div>
@@ -39,13 +39,13 @@
     <div class="word-list">
       <n-text depth="3" style="margin-bottom: 8px; display: block;">已输入：</n-text>
       <div
-        v-for="(word, index) in userAnswers"
+        v-for="index in reversedIndices"
         :key="index"
         class="word-item"
         @click="handleEdit(index)"
       >
         <n-tag :bordered="false" size="medium">
-          {{ index + 1 }}. {{ word }}
+          {{ index + 1 }}. {{ userAnswers[index] }}
         </n-tag>
       </div>
       <n-text v-if="userAnswers.length === 0" depth="3">暂无输入</n-text>
@@ -80,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   NInput, NButton, NText, NDivider, NTag, NModal, NResult
@@ -100,6 +100,14 @@ const userAnswers = store.userAnswers
 const currentInput = ref('')
 const inputRef = ref(null)
 const finished = ref(false)
+
+const reversedIndices = computed(() => {
+  const indices = []
+  for (let i = userAnswers.length - 1; i >= 0; i--) {
+    indices.push(i)
+  }
+  return indices
+})
 
 const showEditModal = ref(false)
 const editIndex = ref(-1)
