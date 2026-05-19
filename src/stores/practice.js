@@ -75,6 +75,9 @@ export const usePracticeStore = defineStore('practice', () => {
       updateWrongWords(wrongWords)
     }
 
+    // 通知统计页数据已更新
+    window.dispatchEvent(new Event('practice-updated'))
+
     return checked
   }
 

@@ -91,13 +91,13 @@
         </div>
         <div class="heatmap-body">
           <div class="heatmap-weekdays">
-            <span></span>
             <span>周一</span>
             <span></span>
             <span>周三</span>
             <span></span>
             <span>周五</span>
             <span></span>
+            <span>周日</span>
           </div>
           <div class="heatmap-grid">
             <div
@@ -124,20 +124,43 @@
     <div class="section">
       <h3 class="section-title">章节正确率</h3>
       <div class="chapter-list">
-        <div v-for="chapter in chapterStats" :key="chapter.id" class="chapter-row">
-          <div class="chapter-name">{{ chapter.name }}</div>
-          <div class="chapter-bar-wrapper">
-            <div class="chapter-bar">
-              <div
-                class="chapter-bar-fill"
-                :style="{ width: chapter.accuracy + '%' }"
-                :class="getBarClass(chapter.accuracy)"
-              ></div>
+        <div v-for="chapter in chapterStats" :key="chapter.id" class="chapter-group">
+          <div class="chapter-row" :class="{ clickable: chapter.practiced }" @click="chapter.practiced && toggleChapter(chapter.id)">
+            <div class="chapter-name">
+              <span class="expand-icon" v-if="chapter.practiced">{{ expandedChapters[chapter.id] ? '▾' : '▸' }}</span>
+              {{ chapter.name }}
             </div>
-            <span class="chapter-accuracy" v-if="chapter.practiced">{{ chapter.accuracy }}%</span>
-            <span class="chapter-accuracy not-practiced" v-else>未练习</span>
+            <div class="chapter-bar-wrapper">
+              <div class="chapter-bar">
+                <div
+                  class="chapter-bar-fill"
+                  :style="{ width: chapter.accuracy + '%' }"
+                  :class="getBarClass(chapter.accuracy)"
+                ></div>
+              </div>
+              <span class="chapter-accuracy" v-if="chapter.practiced">{{ chapter.accuracy }}%</span>
+              <span class="chapter-accuracy not-practiced" v-else>未练习</span>
+            </div>
+            <div class="chapter-count" v-if="chapter.practiced">{{ chapter.count }}次</div>
           </div>
-          <div class="chapter-count" v-if="chapter.practiced">{{ chapter.count }}次</div>
+          <!-- 试卷细分 -->
+          <div v-if="expandedChapters[chapter.id]" class="paper-list">
+            <div v-for="paper in chapter.papers" :key="paper.id" class="paper-row">
+              <div class="paper-name">{{ paper.name }}</div>
+              <div class="chapter-bar-wrapper">
+                <div class="chapter-bar">
+                  <div
+                    class="chapter-bar-fill"
+                    :style="{ width: paper.accuracy + '%' }"
+                    :class="getBarClass(paper.accuracy)"
+                  ></div>
+                </div>
+                <span class="chapter-accuracy" v-if="paper.practiced">{{ paper.accuracy }}%</span>
+                <span class="chapter-accuracy not-practiced" v-else>未练习</span>
+              </div>
+              <div class="chapter-count" v-if="paper.practiced">{{ paper.count }}次</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -168,14 +191,43 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onActivated, onMounted, onUnmounted } from 'vue'
 import { NText } from 'naive-ui'
 import { getHistory, getWrongWords } from '../utils/storage'
 import corpus from '../data/corpus.json'
 
-const history = computed(() => getHistory())
-const wrongWords = computed(() => getWrongWords())
+const history = ref([])
+const wrongWords = ref({})
 const hoveredBar = ref(-1)
+
+function refreshData() {
+  history.value = getHistory()
+  wrongWords.value = getWrongWords()
+}
+
+onMounted(() => {
+  refreshData()
+  // 监听页面可见性变化（从其他页面切回来时刷新）
+  document.addEventListener('visibilitychange', onVisible)
+  // 监听 localStorage 变化
+  window.addEventListener('storage', refreshData)
+  // 监听自定义事件（同标签页内 localStorage 变化）
+  window.addEventListener('practice-updated', refreshData)
+})
+
+onActivated(refreshData)
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisible)
+  window.removeEventListener('storage', refreshData)
+  window.removeEventListener('practice-updated', refreshData)
+})
+
+function onVisible() {
+  if (document.visibilityState === 'visible') {
+    refreshData()
+  }
+}
 
 // 总试卷数
 const totalPapers = computed(() => {
@@ -213,36 +265,48 @@ const recentPractices = computed(() => {
 })
 
 // 3. 热力图数据
+function toLocalDateStr(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 const heatmapData = computed(() => {
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const days = []
-  // 计算起始日期（从24周前的周一开始）
-  const startDate = new Date(today)
-  startDate.setDate(today.getDate() - 167) // 168天前（含今天）
-  // 调整到周一
-  const dayOfWeek = startDate.getDay()
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-  startDate.setDate(startDate.getDate() + mondayOffset)
 
-  // 统计每天的练习次数
+  // 从今天往回推，找到今天所在周的周日，再往前推23周的周一
+  const todayDay = today.getDay() // 0=周日
+  const daysToSunday = todayDay === 0 ? 0 : 7 - todayDay
+  const endDate = new Date(today)
+  endDate.setDate(today.getDate() + daysToSunday) // 本周日
+
+  const startDate = new Date(endDate)
+  startDate.setDate(endDate.getDate() - 24 * 7 + 1) // 24周前的周一
+
+  // 统计每天的练习次数（将 ISO 日期转为本地日期）
   const countMap = {}
   history.value.forEach(r => {
-    const d = r.date.slice(0, 10)
+    const d = toLocalDateStr(new Date(r.date))
     countMap[d] = (countMap[d] || 0) + 1
   })
 
-  // 生成168个格子（24周 x 7天），按列优先（周一到周日）
+  // 生成格子，按列优先（周一到周日）
   for (let col = 0; col < 24; col++) {
     for (let row = 0; row < 7; row++) {
       const d = new Date(startDate)
       d.setDate(startDate.getDate() + col * 7 + row)
-      const dateStr = d.toISOString().slice(0, 10)
+      const dateStr = toLocalDateStr(d)
       const count = countMap[dateStr] || 0
       let level = 0
       if (count >= 3) level = 3
       else if (count >= 2) level = 2
       else if (count >= 1) level = 1
-      days.push({ date: dateStr, count, level })
+      // 未来日期不显示
+      const isFuture = d > today
+      days.push({ date: dateStr, count, level: isFuture ? -1 : level })
     }
   }
   return days
@@ -277,6 +341,12 @@ const heatmapMonths = computed(() => {
 })
 
 // 4. 章节正确率
+const expandedChapters = ref({})
+
+function toggleChapter(id) {
+  expandedChapters.value[id] = !expandedChapters.value[id]
+}
+
 const chapterStats = computed(() => {
   const stats = corpus.units.map(unit => {
     const records = history.value.filter(r => r.unitId === unit.id)
@@ -284,12 +354,30 @@ const chapterStats = computed(() => {
     const accuracy = practiced
       ? Math.round(records.reduce((sum, r) => sum + (r.score / r.total) * 100, 0) / records.length)
       : 0
+
+    // 每个试卷的细分数据
+    const papers = unit.papers.map(paper => {
+      const paperRecords = history.value.filter(r => r.paperId === paper.id)
+      const paperPracticed = paperRecords.length > 0
+      const paperAccuracy = paperPracticed
+        ? Math.round(paperRecords.reduce((sum, r) => sum + (r.score / r.total) * 100, 0) / paperRecords.length)
+        : 0
+      return {
+        id: paper.id,
+        name: paper.name,
+        practiced: paperPracticed,
+        accuracy: paperAccuracy,
+        count: paperRecords.length
+      }
+    })
+
     return {
       id: unit.id,
       name: unit.name,
       practiced,
       accuracy,
-      count: records.length
+      count: records.length,
+      papers
     }
   })
   // 按正确率从低到高排，未练习的放最后
@@ -561,6 +649,7 @@ function formatDate(dateStr) {
 .heatmap-cell.level-1 { background: #c6b4f0; }
 .heatmap-cell.level-2 { background: #8b5cf6; }
 .heatmap-cell.level-3 { background: #5b21b6; }
+.heatmap-cell.level--1 { background: transparent; }
 .heatmap-legend {
   display: flex;
   align-items: center;
@@ -581,18 +670,58 @@ function formatDate(dateStr) {
 .chapter-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
+}
+.chapter-group {
+  border-radius: 8px;
 }
 .chapter-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 8px 0;
+}
+.chapter-row.clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 8px;
+  margin: 0 -8px;
+  transition: background 0.2s;
+}
+.chapter-row.clickable:hover {
+  background: #f8f6ff;
+}
+.expand-icon {
+  font-size: 10px;
+  color: #999;
+  margin-right: 4px;
 }
 .chapter-name {
-  width: 120px;
+  width: 130px;
   font-size: 13px;
   font-weight: 500;
   flex-shrink: 0;
+}
+.paper-list {
+  padding-left: 20px;
+  border-left: 2px solid #f0eaff;
+  margin-left: 12px;
+  margin-bottom: 8px;
+}
+.paper-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 0;
+}
+.paper-name {
+  width: 140px;
+  font-size: 12px;
+  color: #666;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .chapter-bar-wrapper {
   flex: 1;
