@@ -125,9 +125,9 @@
       <h3 class="section-title">章节正确率</h3>
       <div class="chapter-list">
         <div v-for="chapter in chapterStats" :key="chapter.id" class="chapter-group">
-          <div class="chapter-row" :class="{ clickable: chapter.practiced }" @click="chapter.practiced && toggleChapter(chapter.id)">
+          <div class="chapter-row clickable" @click="toggleChapter(chapter.id)">
             <div class="chapter-name">
-              <span class="expand-icon" v-if="chapter.practiced">{{ expandedChapters[chapter.id] ? '▾' : '▸' }}</span>
+              <span class="expand-icon">{{ expandedChapters[chapter.id] ? '▾' : '▸' }}</span>
               {{ chapter.name }}
             </div>
             <div class="chapter-bar-wrapper">
@@ -141,24 +141,24 @@
               <span class="chapter-accuracy" v-if="chapter.practiced">{{ chapter.accuracy }}%</span>
               <span class="chapter-accuracy not-practiced" v-else>未练习</span>
             </div>
-            <div class="chapter-count" v-if="chapter.practiced">{{ chapter.count }}次</div>
+            <div class="chapter-count">{{ chapter.practiced ? chapter.count + '次' : '' }}</div>
           </div>
           <!-- 试卷细分 -->
           <div v-if="expandedChapters[chapter.id]" class="paper-list">
             <div v-for="paper in chapter.papers" :key="paper.id" class="paper-row">
               <div class="paper-name">{{ paper.name }}</div>
-              <div class="chapter-bar-wrapper">
-                <div class="chapter-bar">
+              <div class="paper-bar-wrapper">
+                <div class="paper-bar">
                   <div
                     class="chapter-bar-fill"
                     :style="{ width: paper.accuracy + '%' }"
                     :class="getBarClass(paper.accuracy)"
                   ></div>
                 </div>
-                <span class="chapter-accuracy" v-if="paper.practiced">{{ paper.accuracy }}%</span>
-                <span class="chapter-accuracy not-practiced" v-else>未练习</span>
+                <span class="paper-accuracy" v-if="paper.practiced">{{ paper.accuracy }}%</span>
+                <span class="paper-accuracy not-practiced" v-else>未练习</span>
               </div>
-              <div class="chapter-count" v-if="paper.practiced">{{ paper.count }}次</div>
+              <div class="paper-count" v-if="paper.practiced">{{ paper.count }}次</div>
             </div>
           </div>
         </div>
@@ -722,6 +722,38 @@ function formatDate(dateStr) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.paper-bar-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 60%;
+}
+.paper-bar {
+  flex: 1;
+  height: 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.paper-bar .chapter-bar-fill {
+  border-radius: 4px;
+}
+.paper-accuracy {
+  font-size: 12px;
+  font-weight: 600;
+  width: 45px;
+  text-align: right;
+}
+.paper-accuracy.not-practiced {
+  color: #ccc;
+  font-weight: 400;
+}
+.paper-count {
+  font-size: 11px;
+  color: #999;
+  width: 36px;
 }
 .chapter-bar-wrapper {
   flex: 1;
