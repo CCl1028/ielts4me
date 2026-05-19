@@ -14,6 +14,9 @@
             <router-link to="/history" class="nav-item">
               <n-button quaternary size="small">历史记录</n-button>
             </router-link>
+            <router-link to="/stats" class="nav-item">
+              <n-button quaternary size="small">统计</n-button>
+            </router-link>
           </nav>
         </header>
         <main class="app-content">
