@@ -67,9 +67,9 @@ export const usePracticeStore = defineStore('practice', () => {
     }
     saveHistory(record)
 
-    // 更新错词统计
+    // 更新错词统计（只统计实际作答但答错/跳过的，不含未填的）
     const wrongWords = checked.results
-      .filter(r => !r.correct)
+      .filter(r => !r.correct && !r.unanswered)
       .map(r => r.correctAnswer)
     if (wrongWords.length > 0) {
       updateWrongWords(wrongWords)

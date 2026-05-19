@@ -39,6 +39,14 @@
           <n-button
             size="small"
             quaternary
+            type="error"
+            @click="handleSkip"
+          >
+            不会，跳过
+          </n-button>
+          <n-button
+            size="small"
+            quaternary
             type="info"
             :disabled="userAnswers.length === 0"
             @click="handleSubmit"
@@ -67,7 +75,7 @@
           @click="handleEdit(index)"
         >
           <span class="word-index">{{ index + 1 }}</span>
-          <span class="word-text">{{ userAnswers[index] }}</span>
+          <span class="word-text" :class="{ 'word-skipped': userAnswers[index] === SKIP_MARK }">{{ userAnswers[index] === SKIP_MARK ? '不会' : userAnswers[index] }}</span>
           <span class="word-edit-hint">点击修改</span>
         </div>
       </div>
@@ -108,6 +116,7 @@ import {
   NInput, NButton, NText, NModal, NResult
 } from 'naive-ui'
 import { usePracticeStore } from '../stores/practice'
+import { SKIP_MARK } from '../utils/checker'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,8 +162,25 @@ function handleEnter() {
 
 function handleUndo() {
   const word = store.undoLast()
-  currentInput.value = word
+  if (word === SKIP_MARK) {
+    currentInput.value = ''
+  } else {
+    currentInput.value = word
+  }
   finished.value = false
+  nextTick(() => {
+    inputRef.value?.focus()
+  })
+}
+
+function handleSkip() {
+  store.submitAnswer(SKIP_MARK)
+  currentInput.value = ''
+
+  if (userAnswers.length >= paper.words.length) {
+    finished.value = true
+  }
+
   nextTick(() => {
     inputRef.value?.focus()
   })
@@ -307,6 +333,10 @@ onMounted(() => {
   flex: 1;
   font-size: 15px;
   color: #333;
+}
+.word-skipped {
+  color: #ff4d4f;
+  font-style: italic;
 }
 .word-edit-hint {
   font-size: 11px;

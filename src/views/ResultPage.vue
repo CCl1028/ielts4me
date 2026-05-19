@@ -14,21 +14,25 @@
           v-for="(item, index) in results.results"
           :key="index"
           class="result-item"
-          :class="{ correct: item.correct, wrong: !item.correct }"
+          :class="{ correct: item.correct, wrong: !item.correct && !item.unanswered, unanswered: item.unanswered }"
         >
           <span class="result-index">{{ index + 1 }}</span>
           <div class="result-content">
             <span v-if="item.correct" class="result-correct">
               {{ item.correctAnswer }}
             </span>
+            <span v-else-if="item.unanswered" class="result-unanswered">
+              <span class="unanswered-label">(未作答)</span>
+              <span class="correct-answer">{{ item.correctAnswer }}</span>
+            </span>
             <span v-else class="result-wrong">
-              <span class="user-answer">{{ item.userAnswer || '(未作答)' }}</span>
+              <span class="user-answer">{{ item.userAnswer }}</span>
               <span class="arrow">→</span>
               <span class="correct-answer">{{ item.correctAnswer }}</span>
             </span>
             <span class="meaning">{{ getMeaning(index) }}</span>
           </div>
-          <span class="result-icon">{{ item.correct ? '✓' : '✗' }}</span>
+          <span class="result-icon">{{ item.correct ? '✓' : item.unanswered ? '-' : '✗' }}</span>
         </div>
       </div>
 
@@ -157,6 +161,21 @@ function retry() {
 }
 .result-item.wrong {
   background: #fef2f2;
+}
+.result-item.unanswered {
+  background: #f5f5f5;
+}
+.result-unanswered {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.unanswered-label {
+  color: #bbb;
+  font-style: italic;
+}
+.result-item.unanswered .result-icon {
+  color: #ccc;
 }
 .result-index {
   width: 28px;
