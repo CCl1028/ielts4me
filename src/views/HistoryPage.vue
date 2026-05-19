@@ -7,6 +7,9 @@
             <n-empty description="暂无练习记录" />
           </div>
           <div v-else class="record-list">
+            <div class="export-bar">
+              <n-button size="small" @click="exportExcel">导出全部记录为 Excel</n-button>
+            </div>
             <n-collapse>
               <n-collapse-item
                 v-for="record in history"
@@ -67,10 +70,11 @@
 import { ref, computed } from 'vue'
 import {
   NTabs, NTabPane, NCollapse, NCollapseItem, NTag,
-  NEmpty, NDataTable
+  NEmpty, NDataTable, NButton
 } from 'naive-ui'
 import { getHistory, getWrongWords } from '../utils/storage'
 import corpus from '../data/corpus.json'
+import * as XLSX from 'xlsx'
 
 const activeTab = ref('history')
 const history = ref(getHistory())
@@ -121,6 +125,40 @@ function getMeaning(record, index) {
   if (!paper || !paper.meanings) return ''
   return paper.meanings[index] || ''
 }
+
+function exportExcel() {
+  const wb = XLSX.utils.book_new()
+
+  // 每次练习单独一个 sheet
+  history.value.forEach((record, idx) => {
+    const unit = corpus.units.find(u => u.id === record.unitId)
+    const paper = unit ? unit.papers.find(p => p.id === record.paperId) : null
+
+    const rows = []
+    record.answers.forEach((answer, index) => {
+      const correctWord = paper ? (paper.words[index] || '') : ''
+      const correct = answer.trim().toLowerCase() === correctWord.trim().toLowerCase()
+      rows.push({
+        '题号': index + 1,
+        '我的答案': answer === '__SKIP__' ? '(不会)' : answer,
+        '正确答案': correctWord,
+        '结果': correct ? '✓' : '✗'
+      })
+    })
+
+    const ws = XLSX.utils.json_to_sheet(rows)
+    ws['!cols'] = [{ wch: 5 }, { wch: 16 }, { wch: 16 }, { wch: 5 }]
+
+    // sheet 名称：序号+试卷名+日期，截断到31字符（Excel限制）
+    const dateStr = record.date.slice(5, 10)
+    let sheetName = `${idx + 1}-${record.paperName}-${dateStr}`
+    // Excel sheet 名不能超过31字符，且不能含特殊字符
+    sheetName = sheetName.replace(/[\\/*?[\]:]/g, '').slice(0, 31)
+    XLSX.utils.book_append_sheet(wb, ws, sheetName)
+  })
+
+  XLSX.writeFile(wb, `雅思听力练习记录_${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
 </script>
 
 <style scoped>
@@ -140,6 +178,11 @@ function getMeaning(record, index) {
 }
 .record-list {
   margin-top: 8px;
+}
+.export-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
 }
 .record-header {
   display: flex;
