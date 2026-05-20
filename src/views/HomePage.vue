@@ -24,6 +24,9 @@
                 <div class="paper-name">{{ paper.name }}</div>
                 <div class="paper-info">
                   <span class="word-count">{{ paper.wordCount || paper.words.length }} 词</span>
+                  <span class="practice-count" :class="{ 'not-practiced': getPracticeCount(paper.id) === 0 }">
+                    {{ getPracticeCount(paper.id) === 0 ? '未练习' : '已练 ' + getPracticeCount(paper.id) + ' 次' }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -39,11 +42,17 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NTabs, NTabPane } from 'naive-ui'
 import { usePracticeStore } from '../stores/practice'
+import { getHistory } from '../utils/storage'
 
 const router = useRouter()
 const store = usePracticeStore()
 const units = store.getUnits()
 const activeUnit = ref(units[0]?.id || '')
+const history = getHistory()
+
+function getPracticeCount(paperId) {
+  return history.filter(r => r.paperId === paperId).length
+}
 
 function goToPractice(unitId, paperId) {
   router.push(`/practice/${unitId}/${paperId}`)
@@ -141,6 +150,23 @@ function goToPractice(unitId, paperId) {
   color: #667eea;
 }
 .paper-card:hover .word-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+.practice-count {
+  margin-left: 6px;
+  background: rgba(24, 160, 88, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #18a058;
+  font-weight: 500;
+}
+.practice-count.not-practiced {
+  background: rgba(0, 0, 0, 0.05);
+  color: #bbb;
+}
+.paper-card:hover .practice-count {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
 }
