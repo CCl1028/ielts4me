@@ -61,6 +61,11 @@
           提交批改
         </n-button>
       </div>
+
+      <div class="card-footer">
+        <span></span>
+        <span class="history-link" @click="showHistoryModal = true">历史记录 →</span>
+      </div>
     </div>
 
     <div class="word-list-card" v-if="userAnswers.length > 0">
@@ -98,6 +103,47 @@
         <n-button type="primary" @click="doSubmit">确认提交</n-button>
       </template>
     </n-modal>
+
+    <!-- 历史记录弹窗 -->
+    <n-modal v-model:show="showHistoryModal" preset="card" title="本节历史记录" style="width: 90%; max-width: 500px;">
+      <div v-if="paperHistory.length === 0" style="text-align: center; padding: 20px; color: #999;">
+        暂无历史记录
+      </div>
+      <div v-else>
+        <div
+          v-for="record in paperHistory"
+          :key="record.id"
+          class="history-item"
+          @click="viewHistoryDetail(record)"
+        >
+          <div class="history-item-info">
+            <span class="history-date">{{ formatDate(record.date) }}</span>
+          </div>
+          <span class="history-score" :class="getScoreClass(record)">
+            {{ record.score }}/{{ record.total }} ({{ Math.round(record.score / record.total * 100) }}%)
+          </span>
+        </div>
+      </div>
+    </n-modal>
+
+    <!-- 历史详情弹窗 -->
+    <n-modal v-model:show="showDetailModal" preset="card" title="答题详情" style="width: 90%; max-width: 500px; max-height: 80vh;">
+      <div v-if="selectedRecord" class="detail-list">
+        <div
+          v-for="(answer, index) in selectedRecord.answers"
+          :key="index"
+          class="detail-row"
+          :class="{ 'detail-correct': isAnswerCorrect(answer, index), 'detail-wrong': !isAnswerCorrect(answer, index) }"
+        >
+          <span class="detail-idx">{{ index + 1 }}</span>
+          <span v-if="isAnswerCorrect(answer, index)" class="detail-correct-text">✓ {{ answer }}</span>
+          <span v-else class="detail-wrong-text">
+            ✗ <span class="detail-user">{{ answer || '(未作答)' }}</span> → <span class="detail-right">{{ paper.words[index] }}</span>
+          </span>
+          <span class="detail-meaning">{{ paper.meanings ? paper.meanings[index] : '' }}</span>
+        </div>
+      </div>
+    </n-modal>
   </div>
 
   <div v-else class="error-card">
@@ -117,6 +163,7 @@ import {
 } from 'naive-ui'
 import { usePracticeStore } from '../stores/practice'
 import { SKIP_MARK } from '../utils/checker'
+import { getHistory } from '../utils/storage'
 
 const route = useRoute()
 const router = useRouter()
@@ -145,6 +192,35 @@ const editIndex = ref(-1)
 const editValue = ref('')
 
 const showConfirmModal = ref(false)
+const showHistoryModal = ref(false)
+const showDetailModal = ref(false)
+const selectedRecord = ref(null)
+
+const paperHistory = computed(() => {
+  return getHistory().filter(r => r.paperId === paperId)
+})
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function getScoreClass(record) {
+  const p = record.score / record.total
+  if (p >= 0.8) return 'score-good'
+  if (p >= 0.6) return 'score-ok'
+  return 'score-bad'
+}
+
+function viewHistoryDetail(record) {
+  selectedRecord.value = record
+  showDetailModal.value = true
+}
+
+function isAnswerCorrect(answer, index) {
+  if (!paper || !paper.words[index]) return false
+  return answer.trim().toLowerCase() === paper.words[index].trim().toLowerCase()
+}
 
 function handleEnter() {
   if (!currentInput.value.trim()) return
@@ -350,4 +426,79 @@ onMounted(() => {
   padding: 40px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+.history-link {
+  font-size: 13px;
+  color: #667eea;
+  cursor: pointer;
+  font-weight: 500;
+}
+.history-link:hover {
+  text-decoration: underline;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 6px;
+  background: #f9fafb;
+}
+.history-item:hover {
+  background: #f0f2ff;
+}
+.history-date {
+  font-size: 13px;
+  color: #666;
+}
+.history-score {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+.score-good { background: #f0fdf4; color: #18a058; }
+.score-ok { background: #fffbeb; color: #d97706; }
+.score-bad { background: #fef2f2; color: #d03050; }
+.detail-list {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.detail-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+.detail-row.detail-correct { background: #f0fdf4; }
+.detail-row.detail-wrong { background: #fef2f2; }
+.detail-idx {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.05);
+  font-size: 11px;
+  color: #666;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+.detail-correct-text { color: #18a058; font-size: 14px; }
+.detail-wrong-text { color: #d03050; font-size: 14px; }
+.detail-user { text-decoration: line-through; opacity: 0.7; }
+.detail-right { font-weight: 600; color: #18a058; }
+.detail-meaning { color: #999; font-size: 12px; margin-left: 8px; }
 </style>
