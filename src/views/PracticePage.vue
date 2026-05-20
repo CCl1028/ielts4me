@@ -87,13 +87,13 @@
     </div>
 
     <!-- 编辑弹窗 -->
-    <n-modal v-model:show="showEditModal" preset="dialog" title="修改答案">
+    <n-modal v-model:show="showEditModal" preset="card" title="修改答案" style="width: 90%; max-width: 400px;">
       <n-input v-model:value="editValue" placeholder="修改答案" @keyup.enter="confirmEdit" />
-      <template #action>
-        <n-button type="warning" @click="insertBlankBefore">在此前插入空位（漏听）</n-button>
-        <n-button @click="showEditModal = false">取消</n-button>
-        <n-button type="primary" @click="confirmEdit">确认</n-button>
-      </template>
+      <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <n-button type="warning" size="small" @click="insertBlankBefore">在此前插入空位（漏写）</n-button>
+        <n-button size="small" @click="showEditModal = false">取消</n-button>
+        <n-button type="primary" size="small" @click="confirmEdit">确认修改</n-button>
+      </div>
     </n-modal>
 
     <!-- 提交确认 -->
