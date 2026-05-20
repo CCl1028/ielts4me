@@ -39,7 +39,7 @@
                       ✓ {{ answer }}
                     </span>
                     <span v-else class="wrong-text">
-                      ✗ <span class="user-ans">{{ answer === '__SKIP__' ? '(不会)' : answer }}</span> → <span class="correct-ans">{{ getCorrectWord(record, index) }}</span>
+                      ✗ <span class="user-ans">{{ answer === '__SKIP__' ? '(不会)' : answer === '__BLANK__' ? '(漏听)' : answer }}</span> → <span class="correct-ans">{{ getCorrectWord(record, index) }}</span>
                     </span>
                     <span class="detail-meaning">{{ getMeaning(record, index) }}</span>
                   </div>

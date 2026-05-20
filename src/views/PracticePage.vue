@@ -80,7 +80,7 @@
           @click="handleEdit(index)"
         >
           <span class="word-index">{{ index + 1 }}</span>
-          <span class="word-text" :class="{ 'word-skipped': userAnswers[index] === SKIP_MARK }">{{ userAnswers[index] === SKIP_MARK ? '不会' : userAnswers[index] }}</span>
+          <span class="word-text" :class="{ 'word-skipped': userAnswers[index] === SKIP_MARK, 'word-blank': userAnswers[index] === BLANK_MARK }">{{ userAnswers[index] === SKIP_MARK ? '不会' : userAnswers[index] === BLANK_MARK ? '(漏听)' : userAnswers[index] }}</span>
           <span class="word-edit-hint">点击修改</span>
         </div>
       </div>
@@ -90,6 +90,7 @@
     <n-modal v-model:show="showEditModal" preset="dialog" title="修改答案">
       <n-input v-model:value="editValue" placeholder="修改答案" @keyup.enter="confirmEdit" />
       <template #action>
+        <n-button type="warning" @click="insertBlankBefore">在此前插入空位（漏听）</n-button>
         <n-button @click="showEditModal = false">取消</n-button>
         <n-button type="primary" @click="confirmEdit">确认</n-button>
       </template>
@@ -138,7 +139,7 @@
           <span class="detail-idx">{{ index + 1 }}</span>
           <span v-if="isAnswerCorrect(answer, index)" class="detail-correct-text">✓ {{ answer }}</span>
           <span v-else class="detail-wrong-text">
-            ✗ <span class="detail-user">{{ answer === '__SKIP__' ? '(不会)' : (answer || '(未作答)') }}</span> → <span class="detail-right">{{ paper.words[index] }}</span>
+            ✗ <span class="detail-user">{{ answer === '__SKIP__' ? '(不会)' : answer === '__BLANK__' ? '(漏听)' : (answer || '(未作答)') }}</span> → <span class="detail-right">{{ paper.words[index] }}</span>
           </span>
           <span class="detail-meaning">{{ paper.meanings ? paper.meanings[index] : '' }}</span>
         </div>
@@ -162,7 +163,7 @@ import {
   NInput, NButton, NText, NModal, NResult
 } from 'naive-ui'
 import { usePracticeStore } from '../stores/practice'
-import { SKIP_MARK } from '../utils/checker'
+import { SKIP_MARK, BLANK_MARK } from '../utils/checker'
 import { getHistory } from '../utils/storage'
 
 const route = useRoute()
@@ -273,6 +274,14 @@ function confirmEdit() {
     store.updateAnswer(editIndex.value, editValue.value.trim())
   }
   showEditModal.value = false
+}
+
+function insertBlankBefore() {
+  store.insertBlank(editIndex.value)
+  showEditModal.value = false
+  if (userAnswers.length >= paper.words.length) {
+    finished.value = true
+  }
 }
 
 function handleSubmit() {
@@ -412,6 +421,10 @@ onMounted(() => {
 }
 .word-skipped {
   color: #ff4d4f;
+  font-style: italic;
+}
+.word-blank {
+  color: #999;
   font-style: italic;
 }
 .word-edit-hint {

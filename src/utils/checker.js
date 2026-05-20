@@ -10,6 +10,8 @@ export function checkWord(userAnswer, correctAnswer) {
 
 // "不会"标记常量
 export const SKIP_MARK = '__SKIP__'
+// "漏听"标记常量
+export const BLANK_MARK = '__BLANK__'
 
 /**
  * 批改整份试卷
@@ -21,13 +23,15 @@ export function checkPaper(userAnswers, correctAnswers) {
   const results = correctAnswers.map((correct, index) => {
     const userAnswer = userAnswers[index] || ''
     const skipped = userAnswer === SKIP_MARK
+    const blank = userAnswer === BLANK_MARK
     const unanswered = index >= userAnswers.length
 
     return {
-      userAnswer: skipped ? '不会' : userAnswer,
+      userAnswer: skipped ? '不会' : blank ? '(漏听)' : userAnswer,
       correctAnswer: correct,
-      correct: !skipped && !unanswered && checkWord(userAnswer, correct),
+      correct: !skipped && !blank && !unanswered && checkWord(userAnswer, correct),
       skipped,
+      blank,
       unanswered
     }
   })

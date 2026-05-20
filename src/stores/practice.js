@@ -41,6 +41,10 @@ export const usePracticeStore = defineStore('practice', () => {
     userAnswers.value[index] = word
   }
 
+  function insertBlank(index) {
+    userAnswers.value.splice(index, 0, '__BLANK__')
+  }
+
   function undoLast() {
     if (userAnswers.value.length > 0) {
       return userAnswers.value.pop()
@@ -92,6 +96,7 @@ export const usePracticeStore = defineStore('practice', () => {
     startPractice,
     submitAnswer,
     updateAnswer,
+    insertBlank,
     undoLast,
     submitPaper
   }
