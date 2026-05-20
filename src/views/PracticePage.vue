@@ -138,7 +138,7 @@
           <span class="detail-idx">{{ index + 1 }}</span>
           <span v-if="isAnswerCorrect(answer, index)" class="detail-correct-text">✓ {{ answer }}</span>
           <span v-else class="detail-wrong-text">
-            ✗ <span class="detail-user">{{ answer || '(未作答)' }}</span> → <span class="detail-right">{{ paper.words[index] }}</span>
+            ✗ <span class="detail-user">{{ answer === '__SKIP__' ? '(不会)' : (answer || '(未作答)') }}</span> → <span class="detail-right">{{ paper.words[index] }}</span>
           </span>
           <span class="detail-meaning">{{ paper.meanings ? paper.meanings[index] : '' }}</span>
         </div>
